@@ -28,7 +28,7 @@ void __attribute__((used)) EXTI0HandlerImpl()
     waiting=0;
 }
 
-void init()
+void buttonInit()
 {
     button::mode(Mode::INPUT_PULL_DOWN);
     EXTI->IMR |= EXTI_IMR_MR0;
