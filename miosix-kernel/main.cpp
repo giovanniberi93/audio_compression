@@ -2,27 +2,27 @@
 #include <cstdio>
 #include "miosix.h"
 #include "Microphone.h"
-#include "player.h"
 #include <math.h>
 #include <functional>
 
 using namespace std;
 using namespace miosix;
 
-/*
- * This example program records half second (22050 samples) from the microphone and
- * plays such sound through the board's DAC.
- */
+
+void visualize(unsigned short* PCM, unsigned short  size){
+    iprintf("new\n");
+    for(int i = 0; i < size; i++){
+        iprintf("%d\n",(short) PCM[i] ); // prints key:val
+    }
+}
+
 int main()
 {
-
-    Player& player = Player::instance();
     Microphone& mic = Microphone::instance(); 
     
     /* Best results obtained with a size in the form of (N + 0.5) * 256 with N integer */
-    static const unsigned short size = 896;
-    mic.init(bind(&Player::play,&player,placeholders::_1,placeholders::_2),size);
-    player.init();
+    static const unsigned short size = 661;
+    mic.init(&visualize,size);
     mic.start();
     
     while (1){
