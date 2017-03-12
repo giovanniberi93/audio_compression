@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 #
-# This script plots vectors received via serial as couples of 
-# indexes and values saparated by a semicolon. Each vector is
+# This script plots vectors received via serial as unsigned short integer. Each vector is
 # separated by the string "new"
 #
-# Usage: plot.py device baudrate filename
+# Usage: desktop_script.py device baudrate filename
 #
-# Esample: ./plot.py /dev/ttyUSB0 19200 myFile
+# Example: ./desktop_script.py /dev/ttyUSB0 19200 myFile
 #
 
 import sys, serial, re
@@ -16,9 +15,8 @@ def int16_to_uint16(i):
     return ctypes.c_uint16(i).value
 
 
-
 beginSignal = "new"
-usage = "Usage: " + str(sys.argv[0]) +" device baudrate myFile" + "\n\nexample:\n"+ sys.argv[0] + " /dev/ttyUSB0 19200 myFile";
+usage = "Usage: " + str(sys.argv[0]) +" device baudrate myFile.raw" + "\n\nexample:\n"+ sys.argv[0] + " /dev/ttyUSB0 19200 myFile.raw";
 
 if len(sys.argv) < 4:
 	print("Too few arguments")
@@ -29,7 +27,6 @@ ser = serial.Serial(str(sys.argv[1]), int(sys.argv[2])) #no timeout specified
 outputFile = open(sys.argv[3],"wb");
 
 #size of the sample 
-# OCCHIO CHE HO MESSO 4
 bytes_per_int = 2
 
 pattern = re.compile("(-)?\d+");
@@ -54,7 +51,6 @@ while True:
 			adjustedIntSample = int16_to_uint16(intSample)
 
 			print("sample is $", intSample, "adjusted to ",adjustedIntSample)
-			# OCCHIO CHE QUI HO MESSO SIGNED = FALSE
 			outputFile.write(adjustedIntSample.to_bytes(bytes_per_int, 'little', signed=False))
 		else :
 			first = True
