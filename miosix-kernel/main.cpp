@@ -18,6 +18,7 @@ void sendToSerial(unsigned short* PCM, unsigned short  size){
     // else
     //     orangeLed::low();
     fwrite(PCM, sizeof(unsigned short int), size, stdout);
+    fflush(stdout);
 }
 
 // configure stdout in raw mode
