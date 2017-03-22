@@ -1,3 +1,7 @@
+// write e raw
+// /////sdpcm//// adpcm
+// bitvuket /aturri/btphone
+
 
 #include <cstdio>
 #include "miosix.h"
@@ -12,23 +16,27 @@ using namespace miosix;
 
 typedef Gpio<GPIOD_BASE,13> orangeLed;
 
-void sendToSerial(unsigned short* PCM, unsigned short  size){
-    // if(PCM[1] > 50000)
-    //     orangeLed::high();
-    // else
-    //     orangeLed::low();
-    fwrite(PCM, sizeof(unsigned short int), size, stdout);
-    fflush(stdout);
+
+unsigned short b[] = {10,10,10,10,10,10,10,10};
+// unsigned short b[] = {10};
+
+void sendToSerial(unsigned short* PCM, unsigned short size){
+        write(STDOUT_FILENO,b,sizeof(unsigned short)*size);
+        // fflush(stdout); 
+
 }
 
 // configure stdout in raw mode
 void setRawStdout(){
     struct termios t;
     tcgetattr(STDOUT_FILENO,&t);
-    t.c_lflag &= ~(ISIG | ICANON);    
+    t.c_lflag &= ~(ISIG | ICANON); 
+    tcsetattr(STDOUT_FILENO,TCSANOW, &t); 
 }
 
-// handshake with desktop script
+
+// RICORDATI CHE HAI ATTIVATO IL FLOW CONTROL DA BOARD_SETTINGS.H
+// simple handshake with desktop script
 void serialHandshake(int size){
     iprintf("new\n");
     iprintf("%d\n",size);
@@ -38,11 +46,12 @@ int main()
 {
     orangeLed::mode(Mode::OUTPUT);
     setRawStdout();
-    /* Best results obtained with a size in the form of (N + 0.5) * 256 with N integer */
-    static const unsigned short size = 10;
+    // configSerial();
+    // Best results obtained with a size in the form of (N + 0.5) * 256 with N integer
+    static const unsigned short size = 8;
 
     Microphone& mic = Microphone::instance(); 
-    mic.init(bind(&sendToSerial,placeholders::_1,placeholders::_2), size);
+    mic.init(bind(sendToSerial,placeholders::_1,placeholders::_2), size);
     buttonInit();
 
     // starting procedure
