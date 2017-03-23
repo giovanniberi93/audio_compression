@@ -46,21 +46,21 @@ static void IRQdmaRefill()
 {
     unsigned short *buffer;
     
-	if(bq->tryGetWritableBuffer(buffer)==false)
-	{
-		enobuf=true;
-		return;
-	}
+    if(bq->tryGetWritableBuffer(buffer)==false)
+    {
+        enobuf=true;
+        return;
+    }
     DMA1_Stream3->CR=0;
-	DMA1_Stream3->PAR=reinterpret_cast<unsigned int>(&SPI2->DR);
-	DMA1_Stream3->M0AR=reinterpret_cast<unsigned int>(buffer);
-	DMA1_Stream3->NDTR=bufferSize;
-	DMA1_Stream3->CR=DMA_SxCR_PL_1    | //High priority DMA stream
+    DMA1_Stream3->PAR=reinterpret_cast<unsigned int>(&SPI2->DR);
+    DMA1_Stream3->M0AR=reinterpret_cast<unsigned int>(buffer);
+    DMA1_Stream3->NDTR=bufferSize;
+    DMA1_Stream3->CR=DMA_SxCR_PL_1    | //High priority DMA stream
                      DMA_SxCR_MSIZE_0 | //Write 16bit at a time to RAM
-					 DMA_SxCR_PSIZE_0 | //Read 16bit at a time from SPI
-				     DMA_SxCR_MINC    | //Increment RAM pointer
-			         DMA_SxCR_TCIE    | //Interrupt on completion
-			  	     DMA_SxCR_EN;       //Start the DMA
+                     DMA_SxCR_PSIZE_0 | //Read 16bit at a time from SPI
+                     DMA_SxCR_MINC    | //Increment RAM pointer
+                     DMA_SxCR_TCIE    | //Interrupt on completion
+                     DMA_SxCR_EN;       //Start the DMA
 }
 
 
@@ -68,8 +68,8 @@ static void IRQdmaRefill()
 
 static void dmaRefill()
 {
-	FastInterruptDisableLock dLock;
-	IRQdmaRefill();
+    FastInterruptDisableLock dLock;
+    IRQdmaRefill();
 }
 
 /**
@@ -88,15 +88,15 @@ void __attribute__((naked)) DMA1_Stream3_IRQHandler()
 void __attribute__((used)) I2SdmaHandlerImpl()
 {
     
-	DMA1->LIFCR=DMA_LIFCR_CTCIF3  |
+    DMA1->LIFCR=DMA_LIFCR_CTCIF3  |
                 DMA_LIFCR_CTEIF3  |
                 DMA_LIFCR_CDMEIF3 |
                 DMA_LIFCR_CFEIF3;
-	bq->bufferFilled(bufferSize);
-	IRQdmaRefill();
-	waiting->IRQwakeup();
-	if(waiting->IRQgetPriority()>Thread::IRQgetCurrentThread()->IRQgetPriority())
-		Scheduler::IRQfindNextThread();
+    bq->bufferFilled(bufferSize);
+    IRQdmaRefill();
+    waiting->IRQwakeup();
+    if(waiting->IRQgetPriority()>Thread::IRQgetCurrentThread()->IRQgetPriority())
+        Scheduler::IRQfindNextThread();
 }
 
 /**
@@ -112,15 +112,15 @@ void __attribute__((used)) I2SdmaHandlerImpl()
 template<typename T>
 static void atomicTestAndWaitUntil(volatile T& variable, T value)
 {
-	FastInterruptDisableLock dLock;
-	while(variable!=value)
-	{
-		Thread::IRQgetCurrentThread()->IRQwait();
-		{
-			FastInterruptEnableLock eLock(dLock);
-			Thread::yield();
-		}
-	}
+    FastInterruptDisableLock dLock;
+    while(variable!=value)
+    {
+        Thread::IRQgetCurrentThread()->IRQwait();
+        {
+            FastInterruptEnableLock eLock(dLock);
+            Thread::yield();
+        }
+    }
 }
 
 /**
@@ -129,31 +129,31 @@ static void atomicTestAndWaitUntil(volatile T& variable, T value)
  */
 static const unsigned short *getReadableBuffer()
 {
-	FastInterruptDisableLock dLock;
-	const unsigned short *result;
+    FastInterruptDisableLock dLock;
+    const unsigned short *result;
         unsigned int size;
-	while(bq->tryGetReadableBuffer(result, size)==false)
-	{
-		waiting->IRQwait();
-		{
-			FastInterruptEnableLock eLock(dLock);
-			Thread::yield();
-		}
-	}
-	return result;
+    while(bq->tryGetReadableBuffer(result, size)==false)
+    {
+        waiting->IRQwait();
+        {
+            FastInterruptEnableLock eLock(dLock);
+            Thread::yield();
+        }
+    }
+    return result;
 }
 
 static void bufferEmptied()
 {
-	FastInterruptDisableLock dLock;
-	bq->bufferEmptied();
+    FastInterruptDisableLock dLock;
+    bq->bufferEmptied();
 }
 
 
 Microphone& Microphone::instance()
 {
-	static Microphone singleton;
-	return singleton;
+    static Microphone singleton;
+    return singleton;
 }
 
 Microphone::Microphone() {
@@ -214,9 +214,14 @@ void* Microphone::mainLoopLauncher(void* arg){
 void Microphone::mainLoop(){
     waiting = Thread::getCurrentThread();
     pthread_t cback;
-    bool first=true;
     bq=new BufferQueue<unsigned short,bufferSize,bufNum>();
     NVIC_EnableIRQ(DMA1_Stream3_IRQn);  
+    // create the thread that will execute the callbacks 
+    pthread_create(&cback,NULL,callbackLauncher,reinterpret_cast<void*>(this));
+    // initialize
+    isBufferReady = false;
+    unsigned short* tmp;
+
     while(recording){
         PCMindex = 0;      
         // process any new chunk of PDM samples
@@ -230,28 +235,22 @@ void Microphone::mainLoop(){
                 break;
             }
             bufferEmptied();  
-
         }
         
         // swaps the ready and the processing buffer: allows double buffering
         //on the callback side
-        unsigned short* tmp;
         tmp = readyBuffer;
+        // start critical section
+        pthread_mutex_lock(&bufMutex);
         readyBuffer = processingBuffer;
+        isBufferReady = true;
+        pthread_cond_broadcast(&cbackExecCond);
+        pthread_mutex_unlock(&bufMutex);
+        // end critical section
         processingBuffer = tmp;
-        
-        if (!first){
-            // if the previous callback is still running, wait for it to end.
-            // this implies that some samples may be lost
-            pthread_join(cback,NULL);
-        } else {
-            first = false;
-        }
-        
-        pthread_create(&cback,NULL,callbackLauncher,reinterpret_cast<void*>(this));
-        
     }
-    
+    pthread_cond_broadcast(&cbackExecCond);
+    pthread_join(cback, NULL);
 }
 
 void* Microphone::callbackLauncher(void* arg){
@@ -259,7 +258,14 @@ void* Microphone::callbackLauncher(void* arg){
 }
 
 void Microphone::execCallback() {
-    callback(readyBuffer,PCMsize);
+    while(recording){
+        pthread_mutex_lock(&bufMutex);
+        while(recording && !isBufferReady)
+            pthread_cond_wait(&cbackExecCond, &bufMutex);
+        callback(readyBuffer,PCMsize);
+        isBufferReady = false;
+        pthread_mutex_unlock(&bufMutex);
+    }
 }
 
 bool Microphone::processPDM(const unsigned short *pdmbuffer, int size) {
@@ -319,7 +325,7 @@ void Microphone::stop() {
     delete bq;
     SPI2->I2SCFGR=0;
     {
-	FastInterruptDisableLock dLock;
+    FastInterruptDisableLock dLock;
         RCC->CR &= ~RCC_CR_PLLI2SON;
     }
     free(readyBuffer);

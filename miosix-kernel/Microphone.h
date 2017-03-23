@@ -83,7 +83,7 @@ public:
     void stop();
     
 private:
-    Microphone(); // Microphone is a singleton, the constructor is private
+     Microphone(); // Microphone is a singleton, the constructor is private
     Microphone(const Microphone& orig);
     virtual ~Microphone();
     std::function<void (unsigned short*, unsigned int)> callback;
@@ -103,6 +103,9 @@ private:
     static void* callbackLauncher(void* arg);
     static void* mainLoopLauncher(void* arg);
     
+    volatile bool isBufferReady;
+    pthread_mutex_t bufMutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t cbackExecCond = PTHREAD_COND_INITIALIZER; 
     
 };
 
