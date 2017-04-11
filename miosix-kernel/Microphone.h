@@ -66,7 +66,7 @@ public:
      * \param bufsize the number of PCM samples to be processed by the callback 
      * 
      */
-    void init(std::function<void (unsigned short*, unsigned int)> cback, unsigned int bufsize);
+    void init(std::function<void (short*, unsigned int)> cback, unsigned int bufsize);
     
     /*
      * Starts the recording. When start() is called the devices configuration
@@ -86,10 +86,10 @@ private:
      Microphone(); // Microphone is a singleton, the constructor is private
     Microphone(const Microphone& orig);
     virtual ~Microphone();
-    std::function<void (unsigned short*, unsigned int)> callback;
+    std::function<void (short*, unsigned int)> callback;
     // the buffers handling the double buffering "callback-side"
-    unsigned short* readyBuffer;
-    unsigned short* processingBuffer;
+    short* readyBuffer;
+    short* processingBuffer;
     // variables used to track  and store the transcoding progess
     unsigned int PCMsize;
     unsigned int PCMindex;
@@ -97,7 +97,7 @@ private:
     volatile bool recording;    
     pthread_t mainLoopThread;
     bool processPDM(const unsigned short *pdmbuffer, int size);
-    unsigned short PDMFilter(const unsigned short* PDMBuffer, unsigned int index);
+    short PDMFilter(const unsigned short* PDMBuffer, unsigned int index);
     void mainLoop();
     void execCallback();
     static void* callbackLauncher(void* arg);
