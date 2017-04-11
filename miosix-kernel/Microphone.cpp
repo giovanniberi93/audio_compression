@@ -22,9 +22,12 @@
 #include "util/software_i2c.h"
 #include "Microphone.h"
 
+// #define S 100
+ 
 using namespace std;
 using namespace miosix;
 
+typedef Gpio<GPIOD_BASE,13> orangeLed;
 typedef Gpio<GPIOB_BASE,10> clk;
 typedef Gpio<GPIOC_BASE,3> dout;
 
@@ -38,6 +41,8 @@ static const short oversample = 16;
 static unsigned short intReg[filterOrder] = {0,0,0,0};
 static unsigned short combReg[filterOrder] = {0,0,0,0};
 static signed char pdmLUT[] = {-1, 1};
+
+// unsigned short fakeBuffer[S]; 
 
 /**
  * Configure the DMA to do another transfer
@@ -160,15 +165,19 @@ Microphone::Microphone() {
 
 }
 
-void Microphone::init(function<void (unsigned short*, unsigned int)> cback, unsigned int bufsize){
+void Microphone::init(function<void (short*, unsigned int)> cback, unsigned int bufsize){
+    orangeLed::mode(Mode::OUTPUT);
+    int i=0;
     callback = cback;
     PCMsize = bufsize;
+    // for(i = 0; i < S; i++)
+    //     fakeBuffer[i] = i;
 }
 
 void Microphone::start(){
     recording = true;
-    readyBuffer = (unsigned short*) malloc(sizeof(unsigned short) * PCMsize);
-    processingBuffer = (unsigned short*) malloc(sizeof(unsigned short) * PCMsize);
+    readyBuffer = (short*) malloc(sizeof(unsigned short) * PCMsize);
+    processingBuffer = (short*) malloc(sizeof(unsigned short) * PCMsize);
     {
         FastInterruptDisableLock dLock;
         //Enable DMA1 and SPI2/I2S2 and GPIOB and GPIOC
@@ -220,9 +229,8 @@ void Microphone::mainLoop(){
     pthread_create(&cback,NULL,callbackLauncher,reinterpret_cast<void*>(this));
     // initialize
     isBufferReady = false;
-    unsigned short* tmp;
-
-    while(recording){
+    short* tmp;
+   while(recording){
         PCMindex = 0;      
         // process any new chunk of PDM samples
         for (;;){
@@ -260,9 +268,11 @@ void* Microphone::callbackLauncher(void* arg){
 void Microphone::execCallback() {
     while(recording){
         pthread_mutex_lock(&bufMutex);
-        while(recording && !isBufferReady)
+        while(recording && !isBufferReady){
             pthread_cond_wait(&cbackExecCond, &bufMutex);
+        }
         callback(readyBuffer,PCMsize);
+        // callback(fakeBuffer,PCMsize);
         isBufferReady = false;
         pthread_mutex_unlock(&bufMutex);
     }
@@ -273,7 +283,9 @@ bool Microphone::processPDM(const unsigned short *pdmbuffer, int size) {
     int length = std::min(remaining, size); 
     // convert couples 16 pdm one-bit samples in one 16-bit PCM sample
     for (int i=0; i < length; i++){    
-        processingBuffer[PCMindex++] = PDMFilter(pdmbuffer, i);
+        // put in a signed version
+        // 32768 = 65536/2
+        processingBuffer[PCMindex++] = PDMFilter(pdmbuffer, i) - 32768;
     }
     if (PCMindex < PCMsize) //if produced PCM sample are not enough 
         return false; 
@@ -285,7 +297,7 @@ bool Microphone::processPDM(const unsigned short *pdmbuffer, int size) {
  * This function takes care of the transcoding from 16 PDM bit to 1 PCM sample
  * via CIC filtering. Decimator rate: 16:1, CIC stages: 4.
  */
-unsigned short Microphone::PDMFilter(const unsigned short* PDMBuffer, unsigned int index) {
+short Microphone::PDMFilter(const unsigned short* PDMBuffer, unsigned int index) {
     
     short combInput, combRes;
     
