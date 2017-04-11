@@ -17,7 +17,16 @@ SUBDIRS := $(KPATH)
 ## List here your source files (both .s, .c and .cpp)
 ##
 SRC :=                                  \
-main.cpp Microphone.cpp button.cpp
+main.cpp Microphone.cpp button.cpp \
+mp3Encoder/bitstream.cpp \
+mp3Encoder/huffman.cpp \
+mp3Encoder/l3bitstream.cpp \
+mp3Encoder/l3loop.cpp \
+mp3Encoder/l3mdct.cpp \
+mp3Encoder/l3subband.cpp \
+mp3Encoder/layer3.cpp \
+mp3Encoder/reservoir.cpp \
+mp3Encoder/tables.cpp \
 
 ##
 ## List here additional static libraries with relative path
@@ -27,7 +36,7 @@ LIBS :=
 ##
 ## List here additional include directories (in the form -Iinclude_dir)
 ##
-INCLUDE_DIRS :=
+INCLUDE_DIRS := -Imp3Encoder
 
 ##############################################################################
 ## You should not need to modify anything below                             ##
