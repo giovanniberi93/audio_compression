@@ -269,17 +269,45 @@ void Microphone::execCallback() {
 }
 
 bool Microphone::processPDM(const unsigned short *pdmbuffer, int size) {
+    int decimatedIndex;
     int remaining = PCMsize - PCMindex;
     int length = std::min(remaining, size); 
-    // convert couples 16 pdm one-bit samples in one 16-bit PCM sample
+    short int s, sHigh, valueBeforeJump, jumpValue;
+    bool jumpMade = false;
+
     for (int i=0; i < length; i++){    
-        processingBuffer[PCMindex++] = PDMFilter(pdmbuffer, i);
+
+        // convert couples 16 pdm one-bit samples in one signed 16-bit PCM sample
+        // -32768 is because microphone outputs unsigned samples
+        // so I translate each sample of half of the range
+        s = PDMFilter(pdmbuffer, i) - 32768;
+        // check if this sample belongs to a noise peak or not
+        if(PCMindex - 1 >= 0) {
+            if(!jumpMade && s - processingBuffer[PCMindex - 1] > 30000){
+                jumpMade = true;
+                sHigh = s;
+                valueBeforeJump = processingBuffer[PCMindex - 1];
+                jumpValue = s - valueBeforeJump;
+            }
+            else if (jumpMade && sHigh - s > 30000)
+                jumpMade = false;
+        }
+        // if the sample is not in a noise-generated peak
+        if (!jumpMade){
+            // perform decimation
+            processingBuffer[PCMindex] = s;
+            decimatedIndex = PCMindex / DECIMATION_FACTOR;
+            if(PCMindex - (decimatedIndex * DECIMATION_FACTOR) == 0){
+                decimatedProcessingBuffer[decimatedIndex] = s;
+            }
+        }
+        PCMindex++;
     }
     if (PCMindex < PCMsize) //if produced PCM sample are not enough 
         return false; 
-    
     return true;    
 }
+
 
 /*
  * This function takes care of the transcoding from 16 PDM bit to 1 PCM sample
