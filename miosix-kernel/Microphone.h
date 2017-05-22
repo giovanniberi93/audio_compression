@@ -39,9 +39,6 @@
 #include "codec.h"
 #include <functional>
 
-
-
-
 #ifndef MICROPHONE_H
 #define	MICROPHONE_H
 
@@ -63,9 +60,7 @@ public:
      * Initialize the driver for recording and handling of the audio
      * 
      * \param cback the callback function that will be executed (repeatedly) when
-     * the driver produces bufsize PCM samples
-     * \param bufsize the number of PCM samples to be processed by the callback 
-     * 
+     * the driver produces the right number of samples
      */
     void init(std::function<void (unsigned char*, int)> cback);
     
@@ -89,7 +84,7 @@ public:
      int getBatchSize();
 
 private:
-     Microphone(); // Microphone is a singleton, the constructor is private
+    Microphone(); // Microphone is a singleton, the constructor is private
     Microphone(const Microphone& orig);
     virtual ~Microphone();
     std::function<void (unsigned char*, int)> callback;
@@ -112,7 +107,7 @@ private:
     volatile bool isBufferReady;
     pthread_mutex_t bufMutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t cbackExecCond = PTHREAD_COND_INITIALIZER; 
-    
+
     // buffers used to perorm decimation 
     short int* decimatedReadyBuffer;
     short int* decimatedProcessingBuffer;

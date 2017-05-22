@@ -35,6 +35,8 @@ using namespace miosix;
 typedef Gpio<GPIOB_BASE,10> clk;
 typedef Gpio<GPIOC_BASE,3> dout;
 
+
+
 static const int bufferSize=512; //Buffer RAM is 4*bufferSize bytes
 static const int bufNum = 2;
 static Thread *waiting;
@@ -163,9 +165,8 @@ Microphone& Microphone::instance()
     return singleton;
 }
 
-Microphone::Microphone() {
+Microphone::Microphone() {}
 
-}
 
 void Microphone::init(function<void (unsigned char*, int)> cback){
     callback = cback;
@@ -180,6 +181,7 @@ void Microphone::start(){
     // here I put 1 sample every DECIMATION_FACTOR - 1 samples
     decimatedReadyBuffer = (short*) malloc(sizeof(short) * PCMsize / DECIMATION_FACTOR);
     decimatedProcessingBuffer = (short*) malloc(sizeof(short) * PCMsize / DECIMATION_FACTOR);
+
     compressedBuf = (unsigned char*) malloc(compressed_buf_size_bytes*sizeof(char));
     {
         FastInterruptDisableLock dLock;
@@ -224,6 +226,7 @@ void* Microphone::mainLoopLauncher(void* arg){
 }
 
 void Microphone::mainLoop(){
+
     waiting = Thread::getCurrentThread();
     pthread_t cback;
     bq=new BufferQueue<unsigned short,bufferSize,bufNum>();
@@ -247,11 +250,10 @@ void Microphone::mainLoop(){
                 break;
             }
             bufferEmptied();  
+
         }
-        
         // swaps the ready and the processing buffer: allows double buffering
         // on the callback side
-        //on the callback side
         tmp = readyBuffer;
         decimatedTmp = decimatedReadyBuffer;
 
@@ -259,6 +261,7 @@ void Microphone::mainLoop(){
         decimatedReadyBuffer = decimatedProcessingBuffer;
         // perform encoding using ADPCM codec
         encode(&state, decimatedReadyBuffer, PCMsize/DECIMATION_FACTOR, compressedBuf);
+
         // start critical section
         pthread_mutex_lock(&bufMutex);
         isBufferReady = true;
@@ -267,6 +270,7 @@ void Microphone::mainLoop(){
         // end critical section
         processingBuffer = tmp;
         decimatedProcessingBuffer = tmp;
+
     }
     pthread_cond_broadcast(&cbackExecCond);
     pthread_join(cback, NULL);
@@ -333,7 +337,6 @@ bool Microphone::processPDM(const unsigned short *pdmbuffer, int size) {
  * via CIC filtering. Decimator rate: 16:1, CIC stages: 4.
  */
 unsigned short Microphone::PDMFilter(const unsigned short* PDMBuffer, unsigned int index) {
-    
     short combInput, combRes;
     
     // perform integration on the first word of the PDM chunk to be filtered
