@@ -107,6 +107,9 @@ private:
     pthread_mutex_t bufMutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t cbackExecCond = PTHREAD_COND_INITIALIZER; 
     
+    // buffers used to perorm decimation 
+    short int* decimatedReadyBuffer;
+    short int* decimatedProcessingBuffer;
 };
 
 #endif	/* MICROPHONE_H */

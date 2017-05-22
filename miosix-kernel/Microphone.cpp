@@ -22,6 +22,12 @@
 #include "util/software_i2c.h"
 #include "Microphone.h"
 
+// it keeps only 1/DECIMATION_FACTOR of audio samples
+#define DECIMATION_FACTOR 4
+// number of samples to be processed at time
+#define SAMPLES_AT_TIME 5000
+
+
 using namespace std;
 using namespace miosix;
 
@@ -162,13 +168,17 @@ Microphone::Microphone() {
 
 void Microphone::init(function<void (unsigned short*, unsigned int)> cback, unsigned int bufsize){
     callback = cback;
-    PCMsize = bufsize;
+    PCMsize = SAMPLES_AT_TIME * DECIMATION_FACTOR;
+    compressed_buf_size_bytes = (PCMsize/DECIMATION_FACTOR) / 2;
 }
 
 void Microphone::start(){
     recording = true;
     readyBuffer = (short*) malloc(sizeof(short) * PCMsize);
     processingBuffer = (short*) malloc(sizeof(short) * PCMsize);
+    // here I put 1 sample every DECIMATION_FACTOR - 1 samples
+    decimatedReadyBuffer = (short*) malloc(sizeof(short) * PCMsize / DECIMATION_FACTOR);
+    decimatedProcessingBuffer = (short*) malloc(sizeof(short) * PCMsize / DECIMATION_FACTOR);
     {
         FastInterruptDisableLock dLock;
         //Enable DMA1 and SPI2/I2S2 and GPIOB and GPIOC
@@ -242,6 +252,9 @@ void Microphone::mainLoop(){
         //on the callback side
         tmp = readyBuffer;
         decimatedTmp = decimatedReadyBuffer;
+
+        readyBuffer = processingBuffer;
+        decimatedReadyBuffer = decimatedProcessingBuffer;
         // start critical section
         pthread_mutex_lock(&bufMutex);
         isBufferReady = true;
@@ -249,6 +262,7 @@ void Microphone::mainLoop(){
         pthread_mutex_unlock(&bufMutex);
         // end critical section
         processingBuffer = tmp;
+        decimatedProcessingBuffer = tmp;
     }
     pthread_cond_broadcast(&cbackExecCond);
     pthread_join(cback, NULL);
@@ -359,6 +373,8 @@ void Microphone::stop() {
     }
     free(readyBuffer);
     free(processingBuffer);
+    free(decimatedProcessingBuffer);
+    free(decimatedReadyBuffer);
 }
 
 Microphone::~Microphone() {
