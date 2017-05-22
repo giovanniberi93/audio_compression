@@ -83,6 +83,11 @@ public:
      */
     void stop();
     
+    /*
+     * Return the size of a batch
+     */
+     int getBatchSize();
+
 private:
      Microphone(); // Microphone is a singleton, the constructor is private
     Microphone(const Microphone& orig);

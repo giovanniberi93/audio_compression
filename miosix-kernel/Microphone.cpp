@@ -387,6 +387,10 @@ void Microphone::stop() {
     free(decimatedReadyBuffer);
 }
 
+int Microphone::getBatchSize(){
+    return compressed_buf_size_bytes;
+}
+
 Microphone::~Microphone() {
 }
 
