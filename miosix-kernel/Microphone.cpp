@@ -21,6 +21,7 @@
 #include "miosix/kernel/scheduler/scheduler.h"
 #include "util/software_i2c.h"
 #include "Microphone.h"
+#include "codec.h"
 
 // it keeps only 1/DECIMATION_FACTOR of audio samples
 #define DECIMATION_FACTOR 4
@@ -166,7 +167,7 @@ Microphone::Microphone() {
 
 }
 
-void Microphone::init(function<void (unsigned short*, unsigned int)> cback, unsigned int bufsize){
+void Microphone::init(function<void (unsigned char*, int)> cback){
     callback = cback;
     PCMsize = SAMPLES_AT_TIME * DECIMATION_FACTOR;
     compressed_buf_size_bytes = (PCMsize/DECIMATION_FACTOR) / 2;
@@ -179,6 +180,7 @@ void Microphone::start(){
     // here I put 1 sample every DECIMATION_FACTOR - 1 samples
     decimatedReadyBuffer = (short*) malloc(sizeof(short) * PCMsize / DECIMATION_FACTOR);
     decimatedProcessingBuffer = (short*) malloc(sizeof(short) * PCMsize / DECIMATION_FACTOR);
+    compressedBuf = (unsigned char*) malloc(compressed_buf_size_bytes*sizeof(char));
     {
         FastInterruptDisableLock dLock;
         //Enable DMA1 and SPI2/I2S2 and GPIOB and GPIOC
@@ -255,6 +257,8 @@ void Microphone::mainLoop(){
 
         readyBuffer = processingBuffer;
         decimatedReadyBuffer = decimatedProcessingBuffer;
+        // perform encoding using ADPCM codec
+        encode(&state, decimatedReadyBuffer, PCMsize/DECIMATION_FACTOR, compressedBuf);
         // start critical section
         pthread_mutex_lock(&bufMutex);
         isBufferReady = true;
@@ -277,7 +281,7 @@ void Microphone::execCallback() {
         pthread_mutex_lock(&bufMutex);
         while(recording && !isBufferReady)
             pthread_cond_wait(&cbackExecCond, &bufMutex);
-        callback(readyBuffer,PCMsize);
+        callback(compressedBuf,compressed_buf_size_bytes);
         isBufferReady = false;
         pthread_mutex_unlock(&bufMutex);
     }
@@ -371,6 +375,12 @@ void Microphone::stop() {
     FastInterruptDisableLock dLock;
         RCC->CR &= ~RCC_CR_PLLI2SON;
     }
+
+    // sends ending signal to desktop script
+    // ATTENTION: it's application specific, you might not need it
+    unsigned char *uselessBuffer;
+    callback(uselessBuffer,0);
+    
     free(readyBuffer);
     free(processingBuffer);
     free(decimatedProcessingBuffer);

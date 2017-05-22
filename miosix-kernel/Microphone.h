@@ -36,6 +36,7 @@
 
 
 #include "miosix.h"
+#include "codec.h"
 #include <functional>
 
 
@@ -66,7 +67,7 @@ public:
      * \param bufsize the number of PCM samples to be processed by the callback 
      * 
      */
-    void init(std::function<void (unsigned short*, unsigned int)> cback, unsigned int bufsize);
+    void init(std::function<void (unsigned char*, int)> cback);
     
     /*
      * Starts the recording. When start() is called the devices configuration
@@ -86,7 +87,7 @@ private:
      Microphone(); // Microphone is a singleton, the constructor is private
     Microphone(const Microphone& orig);
     virtual ~Microphone();
-    std::function<void (unsigned short*, unsigned int)> callback;
+    std::function<void (unsigned char*, int)> callback;
     // the buffers handling the double buffering "callback-side"
     short* readyBuffer;
     short* processingBuffer;
@@ -110,6 +111,11 @@ private:
     // buffers used to perorm decimation 
     short int* decimatedReadyBuffer;
     short int* decimatedProcessingBuffer;
+    // adpcm encoder data
+    unsigned char* compressedBuf;
+    CodecState state;
+    int compressed_buf_size_bytes;
+
 };
 
 #endif	/* MICROPHONE_H */
