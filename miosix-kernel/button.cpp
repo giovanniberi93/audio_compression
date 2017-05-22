@@ -8,6 +8,7 @@ using namespace miosix;
 typedef Gpio<GPIOA_BASE,0> button;
 
 static Thread *waiting=0;
+int hasJustPushed = 0;
 
 void __attribute__((naked)) EXTI0_IRQHandler()
 {
@@ -20,7 +21,7 @@ void __attribute__((naked)) EXTI0_IRQHandler()
 void __attribute__((used)) EXTI0HandlerImpl()
 {
     EXTI->PR=EXTI_PR_PR0;
-    if(waiting==0) return;
+    if(waiting==0 || hasJustPushed) return;
     // task become schedulable again
     waiting->IRQwakeup();
     if(waiting->IRQgetPriority()>Thread::IRQgetCurrentThread()->IRQgetPriority())
@@ -45,6 +46,7 @@ void waitForButton()
     waiting=Thread::IRQgetCurrentThread();
     while(waiting)
     {
+
         // call a preemption, return only when someone wake me up (sw interrupt
         Thread::IRQwait();
         // enable interrupt only in the scope
@@ -52,4 +54,11 @@ void waitForButton()
         // dont return until someone wake me up
         Thread::yield();
     }
+    signalHasJustPushed();
+}
+
+void signalHasJustPushed(){
+    hasJustPushed = 1;
+    delayMs(200); 
+    hasJustPushed = 0;
 }
