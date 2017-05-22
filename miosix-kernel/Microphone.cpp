@@ -167,8 +167,8 @@ void Microphone::init(function<void (unsigned short*, unsigned int)> cback, unsi
 
 void Microphone::start(){
     recording = true;
-    readyBuffer = (unsigned short*) malloc(sizeof(unsigned short) * PCMsize);
-    processingBuffer = (unsigned short*) malloc(sizeof(unsigned short) * PCMsize);
+    readyBuffer = (short*) malloc(sizeof(short) * PCMsize);
+    processingBuffer = (short*) malloc(sizeof(short) * PCMsize);
     {
         FastInterruptDisableLock dLock;
         //Enable DMA1 and SPI2/I2S2 and GPIOB and GPIOC
@@ -218,9 +218,9 @@ void Microphone::mainLoop(){
     NVIC_EnableIRQ(DMA1_Stream3_IRQn);  
     // create the thread that will execute the callbacks 
     pthread_create(&cback,NULL,callbackLauncher,reinterpret_cast<void*>(this));
-    // initialize
     isBufferReady = false;
-    unsigned short* tmp;
+    // variable used for swap of processing and ready buffer
+    short *tmp, *decimatedTmp;
 
     while(recording){
         PCMindex = 0;      
@@ -238,11 +238,12 @@ void Microphone::mainLoop(){
         }
         
         // swaps the ready and the processing buffer: allows double buffering
+        // on the callback side
         //on the callback side
         tmp = readyBuffer;
+        decimatedTmp = decimatedReadyBuffer;
         // start critical section
         pthread_mutex_lock(&bufMutex);
-        readyBuffer = processingBuffer;
         isBufferReady = true;
         pthread_cond_broadcast(&cbackExecCond);
         pthread_mutex_unlock(&bufMutex);

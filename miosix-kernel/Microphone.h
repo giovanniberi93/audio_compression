@@ -88,8 +88,8 @@ private:
     virtual ~Microphone();
     std::function<void (unsigned short*, unsigned int)> callback;
     // the buffers handling the double buffering "callback-side"
-    unsigned short* readyBuffer;
-    unsigned short* processingBuffer;
+    short* readyBuffer;
+    short* processingBuffer;
     // variables used to track  and store the transcoding progess
     unsigned int PCMsize;
     unsigned int PCMindex;
