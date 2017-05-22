@@ -9,6 +9,23 @@
 import sys, serial
 from subprocess import call
 
+# bytes representing the expected size of the audio data chunk
+# what it does is read bytes until it reach the head of a new chunk of data
+# i.e. the size of the chunk (that should be the expected batch size)
+def recoveryProcedure(expectedBatchSize):
+	""" tries to perform recovery in case of a communication error """
+	s = ser.read(size=1)
+	while True :
+		if s != expectedBatchSize[0:1]:
+			s = ser.read(size=1)
+		else :
+			s = ser.read(size=1)
+			if s == expectedBatchSize[1:2] :
+				s = ser.read(size=1)
+				if s == expectedBatchSize[2:3]:
+					s = ser.read(size=1)
+					if s == expectedBatchSize[3:4]:
+						return int.from_bytes(expectedBatchSize,byteorder='little', signed=True)
 
 
 
@@ -43,14 +60,23 @@ while sample != beginSignal:
 	sample = ser.readline().decode()
 	sample = sample.split("\n")[0]
 print("\t. : packet received correctly")
+print("\t! : corrupted packet fixed")
 print("\t# : end of the recording")
 print("Started recording", end='', flush=True)
 
+# get expected batch size, as a byte string
+expectedBatchSize = ser.read(4)
+expectedBatchSizeInt = int.from_bytes(expectedBatchSize,byteorder='little', signed=True)
 nextBatchSizeInt = -1;	
+
 while nextBatchSizeInt != 0:
 	# read size of next batch
 	nextBatchSize = ser.read(4)
 	nextBatchSizeInt = int.from_bytes(nextBatchSize,byteorder='little', signed=True)
+	# it means that an error occured
+	if nextBatchSizeInt != expectedBatchSizeInt and nextBatchSizeInt != 0 :
+		nextBatchSizeInt = recoveryProcedure(expectedBatchSize)
+		print('!', end='', flush=True)
 	print('.', end='', flush=True)
 	# reads the batch
 	sample = ser.read(size=nextBatchSizeInt)
