@@ -1,45 +1,70 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 
 #
-# This script plots vectors received via serial as unsigned short integer. Each vector is
-# separated by the string "new"
+# Usage: desktop_script.py filename
+# Example: ./desktop_script.py out.wav
 #
-# Usage: desktop_script.py device baudrate filename
-#
-# Example: ./desktop_script.py /dev/ttyUSB0 115200 myFile
-#
+# IMPORTANT: this script relies on executable ./adpcm/decoder. Follow instruction 
+# 			in readme file in order to create it, if you have not done it yet 
 
-import sys, serial, re
+import sys, serial
+from subprocess import call
 
-beginSignal = "new"
-usage = "Usage: " + str(sys.argv[0]) +" device baudrate myFile.raw" + "\n\nexample:\n"+ sys.argv[0] + " /dev/ttyUSB0 115200 myFile.raw";
 
-if len(sys.argv) < 4:
-	print("Too few arguments")
-	print(usage)
-	exit( 1 )
+
+
+beginSignal = "ready"
+
+if len(sys.argv) == 1 :
+	fileName = "out.wav"
+	print("Default name 'out.wav' assigned. Use: \n\t ./desktop_script myFileName.wav \nto specify a different name.")
+else :
+	fileName = sys.argv[1]
 
 # setup serial port
-ser = serial.Serial(str(sys.argv[1]), int(sys.argv[2]),stopbits=serial.STOPBITS_ONE,parity=serial.PARITY_NONE, bytesize=serial.EIGHTBITS) #no timeout specified
+# no timeout specified
+ser = serial.Serial("/dev/ttyUSB0",					\
+					57600,							\
+					stopbits = serial.STOPBITS_ONE,	\
+					parity = serial.PARITY_NONE,	\
+					bytesize = serial.EIGHTBITS,	\
+					timeout = None, 				\
+					rtscts = False,					\
+					dsrdtr = False,					\
+					xonxoff = False
+					)
 
-outputFile = open(sys.argv[3],"wb");
-outputFileTxt = open(sys.argv[3] + ".txt", "w")
+outputFile = open(".tmp","wb")
+# outputFile = open(sys.argv[3],"wb")
 
-print("prima del begin signal")
+# wait begin signal
+print("\nWaiting for the recording to start...")
 sample = ""
-while sample != beginSignal: #wait for the begin signal
+while sample != beginSignal:
 	sample = ser.readline().decode()
 	sample = sample.split("\n")[0]
-print("dopo il begin signal")
-# read the batch size
-size = ser.readline().decode();
-# because every sample is made of 2 bytes
-bytesPerBatch = int(size)*2
-print("bytes per batch: ",bytesPerBatch)
+print("\t. : packet received correctly")
+print("\t# : end of the recording")
+print("Started recording", end='', flush=True)
 
-while True:
-	sample = ser.read(size=bytesPerBatch)
-	intSample = int.from_bytes(sample,byteorder='little', signed=False)
-	print("sample is ",str(intSample))
-	# samples are in little endian
+nextBatchSizeInt = -1;	
+while nextBatchSizeInt != 0:
+	# read size of next batch
+	nextBatchSize = ser.read(4)
+	nextBatchSizeInt = int.from_bytes(nextBatchSize,byteorder='little', signed=True)
+	print('.', end='', flush=True)
+	# reads the batch
+	sample = ser.read(size=nextBatchSizeInt)
+	# write data to file
 	outputFile.write(sample)
-	outputFileTxt.write(str(intSample)+"\n")
+print("#\n")
+print("Recording completed with success!")
+# decode adpcm to wav file
+successfulDecompression = call(["adpcm/decoder", ".tmp", fileName], stdout=None)
+if successfulDecompression < 0 :
+	print("Error in decompression phase")
+else :
+	# and remove temporary adpcm file
+	print("Decompression completed with success!")
+	call(["rm",".tmp"])
+	print("\nPlay with:\n\n    ffplay -ar 11025 " + fileName)
+
