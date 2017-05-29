@@ -6,14 +6,6 @@ You can find information on how to configure and use the kernel
 at the following url: http://miosix.org
 
 ============================
-
-The microphone and speaker drivers are released together with a compatible version of Miosix (release 2.02), already configured for the execution of the demo (main.cpp) on STM32F407 discovery board.
-
-Configuration includes:
- - selection of the STM32F407 discovery board
- - disabled DMA for the serial port in miosix/config/arch/cortexM4_stm32f4/stm32f407vg_stm32f4discovery, in order to avoid conflict with I2S in the execution of the demo
-
-============================
  
 ## OVERVIEW
 
@@ -56,9 +48,9 @@ and, if you want, also the test adpcm file with
  - press user button to start recording, and press it again to stop it
  
  It could be possible that:
- - communication errors due to RS-232 limits corrupt some data on the link, so the script may not be able to collect data coming from the board. You can identify this situation because every time the script collect a batch of data, it printf a dot on the screen. If the red led is on in the board but dots stop apearing, you have to reset the board and the script
+ - communication errors due to RS-232 limits corrupt some data on the link, so the script may not be able to collect data coming from the board. You can identify this situation because every time the script collect a batch of data, it printf a dot on the screen. If the red led is on in the board but dots stop appearing, you have to reset the board and the script
  - the user button takes 2 clicks at time, so it stops immediately the recording. If it happens, just make another try. 
 
- However, some measure has been taken to solve these situations, so they should not happen often.
+ However, some measures has been taken to solve these situations, so they should not happen often.
 
  Just in case you are struggling because you are stuck using or understanding some part of this code, feel free to contact me on GitHub :whale:
