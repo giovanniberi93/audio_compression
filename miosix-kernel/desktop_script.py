@@ -1,5 +1,7 @@
 #!/usr/bin/python3 
 #
+# Copyright (C) 2017 Giovanni Beri
+#
 # Usage: desktop_script.py filename
 # Example: ./desktop_script.py out.wav
 #

@@ -1,5 +1,6 @@
 /**************************************************************************
  * Copyright (C) 2014 Riccardo Binetti, Guido Gerosa, Alessandro Mariani  *
+ * Copyright (C) 2017 Giovanni Beri                                       *
  *                                                                        *
  * This program is free software: you can redistribute it and/or modify   *
  * it under the terms of the GNU General Public License as published by   *

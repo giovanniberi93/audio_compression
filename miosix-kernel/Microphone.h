@@ -1,5 +1,6 @@
 /**************************************************************************
  * Copyright (C) 2014 Riccardo Binetti, Guido Gerosa, Alessandro Mariani  *
+ * Copyright (C) 2017 Giovanni Beri                                       *
  *                                                                        *
  * This program is free software: you can redistribute it and/or modify   *
  * it under the terms of the GNU General Public License as published by   *
@@ -22,7 +23,7 @@
  * Created on December 29, 2013, 4:54 PM
  * 
  * This class defines a simple interface for recording audio with the embedded
- * microphone on the STM32F4 Discovery board.
+ * microphone on the STM32F4 Discovery board and compressing it using an ADPCM encoder
  * 
  * It works by specifying which user-defined function should process the PCM samples
  * and how many of them. Then the driver can start recordin and the defined function
