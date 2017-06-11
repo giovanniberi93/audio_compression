@@ -301,29 +301,11 @@ bool Microphone::processPDM(const unsigned short *pdmbuffer, int size) {
     for (int i=0; i < length; i++){    
 
         // convert couples 16 pdm one-bit samples in one signed 16-bit PCM sample
-        // -32768 is because microphone outputs unsigned samples
-        // so I translate each sample of half of the range
         s = PDMFilter(pdmbuffer, i);
-        // s = PDMFilter(pdmbuffer, i) - 32768;
-        // check if this sample belongs to a noise peak or not
-        if(PCMindex - 1 >= 0) {
-            if(!jumpMade && s - processingBuffer[PCMindex - 1] > 30000){
-                jumpMade = true;
-                sHigh = s;
-                valueBeforeJump = processingBuffer[PCMindex - 1];
-                jumpValue = s - valueBeforeJump;
-            }
-            else if (jumpMade && sHigh - s > 30000)
-                jumpMade = false;
-        }
-        // if the sample is not in a noise-generated peak
-        if (!jumpMade){
-            // perform decimation
-            processingBuffer[PCMindex] = s;
-            decimatedIndex = PCMindex / DECIMATION_FACTOR;
-            if(PCMindex - (decimatedIndex * DECIMATION_FACTOR) == 0){
-                decimatedProcessingBuffer[decimatedIndex] = s;
-            }
+        processingBuffer[PCMindex] = s;
+        decimatedIndex = PCMindex / DECIMATION_FACTOR;
+        if(PCMindex - (decimatedIndex * DECIMATION_FACTOR) == 0){
+            decimatedProcessingBuffer[decimatedIndex] = s;
         }
         PCMindex++;
     }
